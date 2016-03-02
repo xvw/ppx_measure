@@ -272,35 +272,6 @@ let process_impl key parent typ payload acc =
   :: typ
   :: acc
 
-let pprint = function
-  | Pstr_eval (_,_) -> "Eval"
-  | Pstr_value (_,_) -> "Value"
-  | Pstr_primitive _ -> "Primitive"
-  | Pstr_type _ -> "Type"
-  | Pstr_typext _ -> "Extensions"
-        (* type t1 += ... *)
-  | Pstr_exception _ -> "Expc"
-        (* exception C of T
-           exception C = M.X *)
-  | Pstr_module _ -> "Module"
-        (* module X = ME *)
-  | Pstr_recmodule _ -> "RecMod"
-        (* module rec X1 = ME1 and ... and Xn = MEn *)
-  | Pstr_modtype _ -> "Motype"
-(* module type S = MT *)
-  | _ -> "unknown"
-  (* | Pstr_open of open_description *)
-  (*       (\* open X *\) *)
-  (* | Pstr_class of class_declaration list *)
-  (*       (\* class c1 = ... and ... and cn = ... *\) *)
-  (* | Pstr_class_type of class_type_declaration list *)
-  (*       (\* class type ct1 = ... and ... and ctn = ... *\) *)
-  (* | Pstr_include of include_declaration *)
-  (*       (\* include ME *\) *)
-  (* | Pstr_attribute of attribute *)
-  (*       (\* [@@@id] *\) *)
-  (* | Pstr_extension of extension * attributes *)
-
 let process_structures mapper structure =
   let hash = Hashtbl.create 10 in
   let rec aux acc  = function
@@ -315,7 +286,6 @@ let process_structures mapper structure =
             let _ = Hlp.check_type_uniq hash typ in
             aux acc xs
           | [attr, PStr [right]] ->
-            let _ = Printf.printf "\nHOW:%s\n" (pprint right.pstr_desc) in
             begin
               match right.pstr_desc with
               | Pstr_eval _ -> aux acc xs
