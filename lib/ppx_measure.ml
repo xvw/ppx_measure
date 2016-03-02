@@ -277,6 +277,20 @@ let process_impl key parent typ payload acc =
   :: typ
   :: acc
 
+let extract_tuple aux acc xs hash typ= function
+  | Pexp_tuple [e1; e2] -> begin
+      match (e1.pexp_desc, e2.pexp_desc) with
+      | Pexp_ident {txt = Lident id; _}, Pexp_fun (_, _, _, _) ->
+        let _ = Hlp.check_type_extension hash typ id e2 in
+        aux acc xs
+      | _ -> Hlp.fail "[@@measure TYPE, fun x -> ...] !!"
+    end
+  | _ -> Hlp.fail "Malformed measure, need type t [@@measure kind, fun]"
+
+let process_extension aux acc xs hash typ = function
+  | Pstr_eval (exp, _) -> extract_tuple aux acc xs hash typ exp.pexp_desc
+  | _ -> Hlp.fail "Malformed measure, need type t [@@measure kind, fun]"
+
 let process_structures mapper structure =
   let hash = Hashtbl.create 10 in
   let rec aux acc  = function
@@ -291,22 +305,7 @@ let process_structures mapper structure =
             let _ = Hlp.check_type_uniq hash typ in
             aux acc xs
           | [attr, PStr [right]] ->
-            begin
-              match right.pstr_desc with
-              | Pstr_eval (exp, _) ->
-                begin
-                  match exp.pexp_desc  with
-                  | Pexp_tuple [e1; e2] -> begin
-                      match (e1.pexp_desc, e2.pexp_desc) with
-                      | Pexp_ident {txt = Lident id; _}, Pexp_fun (_, _, _, _) ->
-                        let _ = Hlp.check_type_extension hash typ id e2 in
-                        aux acc xs
-                      | _ -> Hlp.fail "[@@measure TYPE, fun x -> ...] !!"
-                    end
-                  | _ -> Hlp.fail "Malformed measure, need type t [@@measure kind, fun]"
-                end
-              | _ -> Hlp.fail "Malformed measure, need type t [@@measure kind, fun]"
-            end
+            process_extension aux acc xs hash typ right.pstr_desc
           | _ -> Hlp.fail "Malformed measure, need type t [@@measure]"
         end
       | _ -> aux ([x] :: acc) xs
