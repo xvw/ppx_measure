@@ -259,6 +259,11 @@ struct
       fail "Type must be uniq"
     else Hashtbl.add hash name (name, None)
 
+  let check_type_extension hash name typ func =
+    if Hashtbl.mem hash typ then
+      Hashtbl.add hash name.ptype_name.txt (typ, Some func)
+    else fail ("The type "^typ^" doesn't exist !")
+
 
 end
 
@@ -288,7 +293,18 @@ let process_structures mapper structure =
           | [attr, PStr [right]] ->
             begin
               match right.pstr_desc with
-              | Pstr_eval _ -> aux acc xs
+              | Pstr_eval (exp, _) ->
+                begin
+                  match exp.pexp_desc  with
+                  | Pexp_tuple [e1; e2] -> begin
+                      match (e1.pexp_desc, e2.pexp_desc) with
+                      | Pexp_ident {txt = Lident id; _}, Pexp_fun (_, _, _, _) ->
+                        let _ = Hlp.check_type_extension hash typ id e2 in
+                        aux acc xs
+                      | _ -> Hlp.fail "[@@measure TYPE, fun x -> ...] !!"
+                    end
+                  | _ -> Hlp.fail "Malformed measure, need type t [@@measure kind, fun]"
+                end
               | _ -> Hlp.fail "Malformed measure, need type t [@@measure kind, fun]"
             end
           | _ -> Hlp.fail "Malformed measure, need type t [@@measure]"
