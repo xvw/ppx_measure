@@ -197,8 +197,6 @@ struct
   }
 
 
-
-
   let is_measure (x, _) = x.txt = "measure"
 
   let check_type_uniq hash typ =
@@ -208,6 +206,16 @@ struct
     else Hashtbl.add hash name (name, None)
 
 end
+
+let process_sig key parent typ payload acc =
+  (Hlp.sig_for parent key)
+  :: typ
+  :: acc
+
+let process_impl key parent typ payload acc =
+  (Hlp.special_identity ("to_"^key))
+  :: typ
+  :: acc
 
 let process_structures mapper structure =
   let hash = Hashtbl.create 10 in
@@ -231,21 +239,15 @@ let process_structures mapper structure =
   in
   let r = aux [] structure |> List.concat in
   let li_sig, li_impl = Hashtbl.fold (
-      fun key (parent, _) (a, b) ->
-        let ax = {
-          psig_desc = Psig_type [Hlp.create_type None key]
-        ; psig_loc = !default_loc
-        }
-        in
-        let bx = {
-          pstr_desc = Pstr_type [Hlp.precise_type (parent, key) "cm"]
-        ; pstr_loc = !default_loc
-        }
-        in
-        (
-          (Hlp.sig_for parent key) :: ax :: a,
-          (Hlp.special_identity ("to_"^key)) :: bx :: b
-        )
+      fun key (parent, pl) (a, b) ->
+        let ax = { psig_desc = Psig_type [Hlp.create_type None key]
+                 ; psig_loc = !default_loc
+                 } in
+        let bx = { pstr_desc = Pstr_type [Hlp.precise_type (parent, key) "cm"]
+                 ; pstr_loc = !default_loc
+                 } in
+        (process_sig key parent ax pl a,
+         process_impl key parent bx pl b)
     ) hash ([], []) in
   let ident  = Hlp.module_sig (List.rev li_sig) "MEASURE" in
   let modul = Hlp.create_module (List.rev li_impl) ident "Measure" in
