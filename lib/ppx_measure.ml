@@ -42,17 +42,43 @@ struct
   let ident ?(loc = !default_loc) v =
     create_loc ~loc (Lident v)
 
-  let float_type = {
-      ptyp_desc = Ptyp_constr (ident "float", [])
-    ; ptyp_loc = !default_loc
-    ; ptyp_attributes = []
-  }
-
   let subtype name = {
     ptyp_desc = Ptyp_var name
   ; ptyp_loc = !default_loc
   ; ptyp_attributes = []
   }
+
+
+   let ref_type name = {
+     ptyp_desc = Ptyp_constr (ident name, [])
+   ; ptyp_loc = !default_loc
+   ; ptyp_attributes = []
+   }
+
+   let float_type = ref_type "float"
+
+   let polymorphic_type name = {
+     ptyp_desc = Ptyp_constr (ident name, [subtype "a"; subtype "b"])
+     ; ptyp_loc = !default_loc
+     ; ptyp_attributes = []
+   }
+
+   let polymorphic_arrow = {
+     ptyp_desc = Ptyp_arrow (
+         "",
+         polymorphic_type "t", {
+           ptyp_desc = Ptyp_arrow (
+               "",
+               polymorphic_type "t",
+               polymorphic_type "t"
+             )
+         ; ptyp_loc = !default_loc
+         ; ptyp_attributes = []
+         }
+       )
+   ; ptyp_loc = !default_loc
+   ; ptyp_attributes = []
+   }
 
   let special_identity name = {
     pstr_loc = !default_loc
@@ -71,6 +97,21 @@ struct
     ])
   }
 
+  let operator name =
+    let r_name = Printf.sprintf "%s" name in
+    let f_name = Printf.sprintf "%s." name in
+    {
+      pstr_loc = !default_loc
+    ; pstr_desc = Pstr_value (
+        Nonrecursive, [{
+            pvb_pat = Pat.var (loc r_name)
+          ; pvb_expr = Exp.ident (ident f_name)
+          ; pvb_attributes = []
+          ; pvb_loc = !default_loc
+          }]
+      )
+    }
+
    let typed_id name input output = {
      psig_desc = Psig_value {
          pval_name = loc name
@@ -86,18 +127,24 @@ struct
    ; psig_loc = !default_loc
    }
 
+
+
+   let operator_sig name = {
+      psig_desc = Psig_value {
+         pval_name = loc name
+       ; pval_type = polymorphic_arrow
+       ; pval_prim = []
+       ; pval_attributes = []
+       ; pval_loc = !default_loc
+       }
+   ; psig_loc = !default_loc
+   }
+
    let phantom (a, b) t = {
      ptyp_desc = Ptyp_constr (ident t, [a; b])
    ; ptyp_loc = !default_loc
    ; ptyp_attributes = []
    }
-
-   let ref_type name = {
-     ptyp_desc = Ptyp_constr (ident name, [])
-   ; ptyp_loc = !default_loc
-   ; ptyp_attributes = []
-   }
-
 
   let variant_poly name = {
     ptyp_desc = Ptyp_variant (
@@ -163,6 +210,10 @@ struct
             "to_float"
             (subtype "base", subtype "subtype")
             float_type
+        ; operator_sig "+"
+        ; operator_sig "-"
+        ; operator_sig "/"
+        ; operator_sig "*"
         ] @ li)
     ; pmty_loc = !default_loc
     ; pmty_attributes = []
@@ -179,7 +230,11 @@ struct
                   pstr_desc = Pstr_type [(base_type (Some float_type) "t")]
                 ; pstr_loc = !default_loc
                 }
-                ; special_identity "to_float"
+              ; special_identity "to_float"
+              ; operator "+"
+              ; operator "-"
+              ; operator "*"
+              ; operator "/"
               ] @ li)
           ; pmod_loc = !default_loc
           ; pmod_attributes = []
@@ -204,6 +259,7 @@ struct
     if Hashtbl.mem hash name then
       fail "Type must be uniq"
     else Hashtbl.add hash name (name, None)
+
 
 end
 
@@ -240,10 +296,10 @@ let process_structures mapper structure =
   let r = aux [] structure |> List.concat in
   let li_sig, li_impl = Hashtbl.fold (
       fun key (parent, pl) (a, b) ->
-        let ax = { psig_desc = Psig_type [Hlp.create_type None key]
+        let ax = { psig_desc = Psig_type [Hlp.precise_type (parent, key) key]
                  ; psig_loc = !default_loc
                  } in
-        let bx = { pstr_desc = Pstr_type [Hlp.precise_type (parent, key) "cm"]
+        let bx = { pstr_desc = Pstr_type [Hlp.precise_type (parent, key) key]
                  ; pstr_loc = !default_loc
                  } in
         (process_sig key parent ax pl a,
