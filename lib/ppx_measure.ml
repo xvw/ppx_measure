@@ -46,7 +46,7 @@ struct
       ptyp_desc = Ptyp_constr (ident "float", [])
     ; ptyp_loc = !default_loc
     ; ptyp_attributes = []
-    }
+  }
 
   let subtype name = {
     ptyp_desc = Ptyp_var name
@@ -54,11 +54,11 @@ struct
   ; ptyp_attributes = []
   }
 
-  let fun_to_float = {
+  let special_identity name = {
     pstr_loc = !default_loc
   ; pstr_desc = Pstr_value (Nonrecursive, [
       {
-        pvb_pat = Pat.var (loc "to_float")
+        pvb_pat = Pat.var (loc name)
       ; pvb_expr =
           Exp.fun_
             ""
@@ -71,29 +71,50 @@ struct
     ])
   }
 
-  let fun_to_float_sig = {
-    psig_desc = Psig_value {
-        pval_name = loc "to_float"
-      ; pval_type = {
-          ptyp_desc = Ptyp_arrow (
-              "",
-              {
-                ptyp_desc =
-                  Ptyp_constr (ident "t",[subtype "base"; subtype "subtype"])
-              ; ptyp_loc = !default_loc
-              ; ptyp_attributes = []
-              },
-              float_type
-            )
-        ; ptyp_loc = !default_loc
-        ; ptyp_attributes = []
-        }
-      ; pval_prim = []
-      ; pval_attributes = []
-      ; pval_loc = !default_loc
-      }
-  ; psig_loc = !default_loc
+   let typed_id name input output = {
+     psig_desc = Psig_value {
+         pval_name = loc name
+       ; pval_type = {
+           ptyp_desc = Ptyp_arrow ("", input, output)
+         ; ptyp_loc = !default_loc
+         ; ptyp_attributes = []
+         }
+       ; pval_prim = []
+       ; pval_attributes = []
+       ; pval_loc = !default_loc
+       }
+   ; psig_loc = !default_loc
+   }
+
+   let phantom (a, b) t = {
+     ptyp_desc = Ptyp_constr (ident t, [a; b])
+   ; ptyp_loc = !default_loc
+   ; ptyp_attributes = []
+   }
+
+   let ref_type name = {
+     ptyp_desc = Ptyp_constr (ident name, [])
+   ; ptyp_loc = !default_loc
+   ; ptyp_attributes = []
+   }
+
+
+  let variant_poly name = {
+    ptyp_desc = Ptyp_variant (
+        [Rtag (name, [], true, [])],
+        Closed,
+        None
+      )
+  ; ptyp_loc = !default_loc
+  ; ptyp_attributes = []
   }
+
+  let sig_for parent name =
+    typed_id ("to_"^name) float_type (ref_type name)
+
+   let special_identity_sig name (a, b) res =
+     typed_id name (phantom (a, b) "t") res
+
 
   let base_type concrete_type name = {
     ptype_name = loc name
@@ -109,33 +130,57 @@ struct
   ; ptype_loc = !default_loc
   }
 
+  let create_type t name = {
+    ptype_name = loc name
+  ; ptype_params = []
+  ; ptype_cstrs = []
+  ; ptype_kind = Ptype_abstract
+  ; ptype_private = Public
+  ; ptype_manifest = t
+  ; ptype_attributes = []
+  ; ptype_loc = !default_loc
+  }
 
-  let module_sig name =
+
+  let precise_type (a, b) name =
+    let t = {
+      ptyp_desc = Ptyp_constr (ident "t", [variant_poly a; variant_poly b])
+    ; ptyp_loc = !default_loc
+    ; ptyp_attributes = []
+    }
+    in
+    create_type (Some t) name
+
+
+  let module_sig li name =
     {
-      pmty_desc = Pmty_signature [
+      pmty_desc = Pmty_signature ([
           {
             psig_desc = Psig_type [(base_type None "t")]
           ; psig_loc = !default_loc
           }
-          ; fun_to_float_sig
-        ]
+        ; special_identity_sig
+            "to_float"
+            (subtype "base", subtype "subtype")
+            float_type
+        ] @ li)
     ; pmty_loc = !default_loc
     ; pmty_attributes = []
     }
 
-  let module_binding modtype name = {
+  let module_binding li modtype name = {
     pmb_name = loc name
   ; pmb_expr = {
       pmod_desc =
         Pmod_constraint ({
             pmod_desc =
-              Pmod_structure [
+              Pmod_structure ([
                 {
                   pstr_desc = Pstr_type [(base_type (Some float_type) "t")]
                 ; pstr_loc = !default_loc
                 }
-                ; fun_to_float
-              ]
+                ; special_identity "to_float"
+              ] @ li)
           ; pmod_loc = !default_loc
           ; pmod_attributes = []
           }, modtype)
@@ -146,23 +191,64 @@ struct
   ; pmb_loc = !default_loc
   }
 
-  let create_module typ name = {
-    pstr_desc = Pstr_module (module_binding typ name)
+  let create_module li typ name = {
+    pstr_desc = Pstr_module (module_binding li typ name)
   ; pstr_loc = !default_loc
   }
+
+
+
+
+  let is_measure (x, _) = x.txt = "measure"
+
+  let check_type_uniq hash typ =
+    let name = typ.ptype_name.txt in
+    if Hashtbl.mem hash name then
+      fail "Type must be uniq"
+    else Hashtbl.add hash name (name, None)
 
 end
 
 let process_structures mapper structure =
+  let hash = Hashtbl.create 10 in
   let rec aux acc  = function
     | [] -> List.rev acc
     | str :: xs ->
       let x = mapper.structure_item mapper str in
-      aux ([x] :: acc) xs
+      match x.pstr_desc with
+      | Pstr_type [typ] ->
+        begin
+          match List.filter Hlp.is_measure typ.ptype_attributes with
+          | [] -> aux ([x] :: acc) xs
+          | [attr, PStr [_]] ->
+            let _ = Hlp.check_type_uniq hash typ in
+            aux acc xs
+          | [attr, PStr pl] ->
+            aux acc xs
+          | _ -> Hlp.fail "Malformed measure"
+        end
+      | _ -> aux ([x] :: acc) xs
   in
   let r = aux [] structure |> List.concat in
-  let ident  = Hlp.module_sig "MEASURE" in
-  let modul = Hlp.create_module ident "Measure" in
+  let li_sig, li_impl = Hashtbl.fold (
+      fun key (parent, _) (a, b) ->
+        let ax = {
+          psig_desc = Psig_type [Hlp.create_type None key]
+        ; psig_loc = !default_loc
+        }
+        in
+        let bx = {
+          pstr_desc = Pstr_type [Hlp.precise_type (parent, key) "cm"]
+        ; pstr_loc = !default_loc
+        }
+        in
+        (
+          (Hlp.sig_for parent key) :: ax :: a,
+          (Hlp.special_identity ("to_"^key)) :: bx :: b
+        )
+    ) hash ([], []) in
+  let ident  = Hlp.module_sig (List.rev li_sig) "MEASURE" in
+  let modul = Hlp.create_module (List.rev li_impl) ident "Measure" in
   modul :: r
 
 let new_mapper argv = {
