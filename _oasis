@@ -1,0 +1,22 @@
+Name: ppx_measure
+Version: 1.0
+Synopsis: Add type safe unit of measure
+Authors: Xavier Van de Woestyne <xaviervdw@gmail.com>
+License: MIT
+
+Description: A small preprocessor to add type-safe unit of measure
+Homepage: https://github.com/xvw/ppx_measure
+
+OASISFormat: 0.4
+OCamlVersion: >= 4.02.1
+BuildTools: ocamlbuild
+Plugins: META (0.4), DevFiles (0.4)
+
+PreInstallCommand:   $ocamlfind install ppx_measure lib/META
+PreUninstallCommand: $ocamlfind remove ppx_measure
+
+Executable ppx_refutable_test
+  Path:           lib
+  BuildDepends:   compiler-libs.common
+  MainIs:         ppx_measure.ml
+  CompiledObject: best
