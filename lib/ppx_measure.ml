@@ -251,7 +251,6 @@ struct
   ; pstr_loc = !default_loc
   }
 
-
   let is_measure (x, _) = x.txt = "measure"
 
   let check_type_uniq hash typ =
@@ -273,23 +272,56 @@ let process_impl key parent typ payload acc =
   :: typ
   :: acc
 
+let pprint = function
+  | Pstr_eval (_,_) -> "Eval"
+  | Pstr_value (_,_) -> "Value"
+  | Pstr_primitive _ -> "Primitive"
+  | Pstr_type _ -> "Type"
+  | Pstr_typext _ -> "Extensions"
+        (* type t1 += ... *)
+  | Pstr_exception _ -> "Expc"
+        (* exception C of T
+           exception C = M.X *)
+  | Pstr_module _ -> "Module"
+        (* module X = ME *)
+  | Pstr_recmodule _ -> "RecMod"
+        (* module rec X1 = ME1 and ... and Xn = MEn *)
+  | Pstr_modtype _ -> "Motype"
+(* module type S = MT *)
+  | _ -> "unknown"
+  (* | Pstr_open of open_description *)
+  (*       (\* open X *\) *)
+  (* | Pstr_class of class_declaration list *)
+  (*       (\* class c1 = ... and ... and cn = ... *\) *)
+  (* | Pstr_class_type of class_type_declaration list *)
+  (*       (\* class type ct1 = ... and ... and ctn = ... *\) *)
+  (* | Pstr_include of include_declaration *)
+  (*       (\* include ME *\) *)
+  (* | Pstr_attribute of attribute *)
+  (*       (\* [@@@id] *\) *)
+  (* | Pstr_extension of extension * attributes *)
+
 let process_structures mapper structure =
   let hash = Hashtbl.create 10 in
   let rec aux acc  = function
     | [] -> List.rev acc
-    | str :: xs ->
-      let x = mapper.structure_item mapper str in
+    | x :: xs ->
       match x.pstr_desc with
       | Pstr_type [typ] ->
         begin
           match List.filter Hlp.is_measure typ.ptype_attributes with
           | [] -> aux ([x] :: acc) xs
-          | [attr, PStr [_]] ->
+          | [attr, PStr []] ->
             let _ = Hlp.check_type_uniq hash typ in
             aux acc xs
-          | [attr, PStr pl] ->
-            aux acc xs
-          | _ -> Hlp.fail "Malformed measure"
+          | [attr, PStr [right]] ->
+            let _ = Printf.printf "\nHOW:%s\n" (pprint right.pstr_desc) in
+            begin
+              match right.pstr_desc with
+              | Pstr_eval _ -> aux acc xs
+              | _ -> Hlp.fail "Malformed measure, need type t [@@measure kind, fun]"
+            end
+          | _ -> Hlp.fail "Malformed measure, need type t [@@measure]"
         end
       | _ -> aux ([x] :: acc) xs
   in
