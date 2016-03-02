@@ -1,9 +1,9 @@
 type cm [@@measure]
+type m  [@@measure cm, fun x -> x *. 100.  ]
+type km [@@measure cm, fun x -> x *. 1000. ]
 
-type km [@@measure  cm, fun x -> x /. 1000.]
-type litres [@@measure]
+let x = Measure.to_cm 45.
+let y = Measure.to_cm 10.
+let z = Measure.to_km 12.
 
-type truc = float
-
-let x = 10
-
+let _ = Measure.(x + z)

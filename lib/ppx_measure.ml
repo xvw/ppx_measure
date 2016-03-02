@@ -191,7 +191,10 @@ struct
 
   let precise_type (a, b) name =
     let t = {
-      ptyp_desc = Ptyp_constr (ident "t", [variant_poly a; variant_poly b])
+      ptyp_desc = Ptyp_constr (
+          ident "t",
+          [variant_poly a; variant_poly b]
+        )
     ; ptyp_loc = !default_loc
     ; ptyp_attributes = []
     }
@@ -264,18 +267,41 @@ struct
       Hashtbl.add hash name.ptype_name.txt (typ, Some func)
     else fail ("The type "^typ^" doesn't exist !")
 
+  let create_coersion_interface key parent typ = function
+    | None -> []
+    | Some _ ->
+      let name = Printf.sprintf "%s_to_%s" key parent in
+      [typed_id name (ref_type key) (ref_type parent)]
+
+  let create_coersion key parent typ = function
+    | None -> []
+    | Some func ->
+      let name = Printf.sprintf "%s_to_%s" key parent in
+      [{
+        pstr_loc = !default_loc
+      ; pstr_desc = Pstr_value (Nonrecursive, [
+          {
+            pvb_pat = Pat.var (loc name)
+          ; pvb_expr = func
+          ; pvb_attributes = []
+          ; pvb_loc = !default_loc
+          }
+        ])
+      }]
 
 end
 
 let process_sig key parent typ payload acc =
-  (Hlp.sig_for parent key)
+  (Hlp.create_coersion_interface key parent typ payload) @
+  ((Hlp.sig_for parent key)
   :: typ
-  :: acc
+  :: acc)
 
 let process_impl key parent typ payload acc =
-  (Hlp.special_identity ("to_"^key))
+  (Hlp.create_coersion key  parent typ payload) @
+  ((Hlp.special_identity ("to_"^key))
   :: typ
-  :: acc
+  :: acc)
 
 let extract_tuple aux acc xs hash typ= function
   | Pexp_tuple [e1; e2] -> begin
