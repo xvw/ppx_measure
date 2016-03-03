@@ -317,12 +317,15 @@ let process_extension aux acc xs hash typ = function
   | Pstr_eval (exp, _) -> extract_tuple aux acc xs hash typ exp.pexp_desc
   | _ -> Hlp.fail "Malformed measure, need type t [@@measure kind, fun]"
 
-let process_structures mapper structure =
+let rec process_structures mapper structure =
   let hash = Hashtbl.create 10 in
   let rec aux acc  = function
     | [] -> List.rev acc
     | x :: xs ->
       match x.pstr_desc with
+      | Pstr_module b ->
+        let res = process_structure_for_module mapper b in
+        aux ([{x with pstr_desc = res}] :: acc) xs
       | Pstr_type [typ] ->
         begin
           match List.filter Hlp.is_measure typ.ptype_attributes with
@@ -351,6 +354,20 @@ let process_structures mapper structure =
   let ident  = Hlp.module_sig (List.rev li_sig) "MEASURE" in
   let modul = Hlp.create_module (List.rev li_impl) ident "Measure" in
   modul :: r
+
+and process_structure_for_module mapper binding =
+  let expr = binding.pmb_expr in
+  match expr.pmod_desc with
+  | Pmod_structure str ->
+    let s = process_structures mapper str in
+    Pstr_module {
+      binding with pmb_expr = {
+        binding.pmb_expr with
+        pmod_desc = Pmod_structure s
+      }
+    }
+  | _ -> Pstr_module binding
+
 
 let new_mapper argv = {
   default_mapper with
