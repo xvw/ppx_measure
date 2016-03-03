@@ -1,15 +1,18 @@
 type cm [@@measure]
-type m  [@@measure cm, fun x -> x *. 100.  ]
-type km [@@measure cm, fun x -> x *. 1000. ]
+and  m  [@@measure fun cm -> cm *. 100.  ]
+and  km [@@measure fun cm -> cm *. 1000. ]
 
-module T =
+type test
+type other
+
+type cl [@@measure]
+and  dl [@@measure fun cl -> cl *. 10.   ]
+and  l  [@@measure fun cl -> cl *. 100.  ]
+and  kl [@@measure fun cl -> cl *. 1000. ]
+
+type ex
+
+module R =
 struct
-  type litre [@@measure]
+  type rl [@@measure]
 end
-
-(* let%cm x = 45. *)
-(* let y = Measure.to_cm 10. *)
-(* let%km = 10. *)
-
-(* let _ = Measure.(x + z) *)
-

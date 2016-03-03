@@ -14,7 +14,6 @@ Plugins: META (0.4), DevFiles (0.4)
 
 PreInstallCommand:   $ocamlfind install ppx_measure lib/META
 PreUninstallCommand: $ocamlfind remove ppx_measure
-
 Executable ppx_refutable_test
   Path:           lib
   BuildDepends:   compiler-libs.common

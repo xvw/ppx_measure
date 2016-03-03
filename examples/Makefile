@@ -5,6 +5,9 @@ example:
 	$(OCAMLC) -dsource example.ml -o example.byte
 	rm -rf *.cm*
 
+show:
+	ocamlfind ppx_tools/dumpast example.ml
+
 clean:
 	rm -rf *~
 	rm -rf \#*
