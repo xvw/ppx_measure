@@ -36,7 +36,7 @@ let add_metric hash base_name parent callback =
     )
   else Hashtbl.add hash base_name (parent, callback)
 
-let perform_subtypes parent =
+let perform_subtypes hash parent =
   let rec aux acc = function
     | [] -> acc
     | x :: xs ->
@@ -46,9 +46,20 @@ let perform_subtypes parent =
           x.ptype_attributes
       in
       match attr with
-      | [_, PStr [func]] ->
-        let _ = printf "add %s as a subtype\n" name in
-        aux (x :: acc) xs
+      | [_, PStr [potential_fun]] ->
+        begin
+          match potential_fun.pstr_desc with
+          | Pstr_eval (exp, _) ->
+            begin
+              match exp.pexp_desc with
+              | (Pexp_fun (_, _, _, _)) as func ->
+                let _ = printf "add %s as a subtype\n" name in
+                let _ = add_metric hash name parent (Some func) in
+                aux (x :: acc) xs
+              | _ -> raise_error (sprintf "[%s] Malformed subtype" name)
+            end
+          | _ -> raise_error (sprintf "[%s] need a coersion callback" name)
+          end
       | _ -> raise_error (sprintf "[%s] this subtype is malformed" name)
   in aux []
 
@@ -58,7 +69,7 @@ let perform_type hash mapper item = function
         (fun (e, _) -> e.txt = "measure") x.ptype_attributes ->
     let base_name = x.ptype_name.txt in
     let _ = add_metric hash base_name base_name None in
-    let li = perform_subtypes base_name xs in
+    let li = perform_subtypes hash base_name xs in
     Ast_mapper.(default_mapper.structure_item mapper item)
   | _ -> Ast_mapper.(default_mapper.structure_item mapper item)
 
