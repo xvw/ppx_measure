@@ -22,10 +22,25 @@
 open Printf
 open Parsetree
 open Asttypes
+open Ast_helper
 
- let raise_error ?(loc = !Ast_helper.default_loc) message =
-    let open Location in
-    raise (Error (error ~loc message))
+let create_loc ?(loc = !default_loc) value = {
+  txt = value
+; loc = loc
+}
+
+let create_attribute value payload =
+  (create_loc value, payload)
+
+let raise_error ?(loc = !default_loc) message =
+  let open Location in
+  raise (Error (error ~loc message))
+
+let wrap_in item =
+  Str.attribute (
+    create_attribute "measure_refuted" (PStr [item])
+  )
+
 
 let add_metric hash base_name parent callback =
   if Hashtbl.mem hash base_name
@@ -37,8 +52,8 @@ let add_metric hash base_name parent callback =
   else Hashtbl.add hash base_name (parent, callback)
 
 let perform_subtypes hash parent =
-  let rec aux acc = function
-    | [] -> acc
+  let rec aux = function
+    | [] -> ()
     | x :: xs ->
       let name = x.ptype_name.txt in
       let attr = List.filter
@@ -55,13 +70,13 @@ let perform_subtypes hash parent =
               | (Pexp_fun (_, _, _, _)) as func ->
                 let _ = printf "add %s as a subtype\n" name in
                 let _ = add_metric hash name parent (Some func) in
-                aux (x :: acc) xs
+                aux xs
               | _ -> raise_error (sprintf "[%s] Malformed subtype" name)
             end
           | _ -> raise_error (sprintf "[%s] need a coersion callback" name)
           end
       | _ -> raise_error (sprintf "[%s] this subtype is malformed" name)
-  in aux []
+  in aux
 
 
 let perform_type hash mapper item = function
@@ -69,8 +84,8 @@ let perform_type hash mapper item = function
         (fun (e, _) -> e.txt = "measure") x.ptype_attributes ->
     let base_name = x.ptype_name.txt in
     let _ = add_metric hash base_name base_name None in
-    let li = perform_subtypes hash base_name xs in
-    Ast_mapper.(default_mapper.structure_item mapper item)
+    let _ = perform_subtypes hash base_name xs in
+    (wrap_in item)
   | _ -> Ast_mapper.(default_mapper.structure_item mapper item)
 
 
@@ -79,18 +94,17 @@ let structure_item hash mapper item =
   | Pstr_type declarations -> perform_type hash mapper item declarations
   | _ -> Ast_mapper.(default_mapper.structure_item mapper item)
 
-let structure mapper strct =
+let structure hash mapper strct =
   Ast_mapper.(default_mapper.structure mapper strct)
 
 let () =
   Ast_mapper.(register
     "ppx_measure"
     (fun argv ->
-       let hash = Hashtbl.create 10 in
-       {
+       let hash = Hashtbl.create 10 in {
          default_mapper with
          structure_item = structure_item hash;
-         structure = structure;
+         structure = structure hash
        }
     )
 )
