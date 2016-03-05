@@ -106,6 +106,12 @@ struct
   let type_param name = Typ.var name
   let ref_type name = Typ.constr (ident name) []
   let phantom_type (a, b) t = Typ.constr (ident t) [a; b]
+  let poly name = Typ.constr (ident name) [type_param "base"; type_param "subtype"]
+
+  let rec arrow = function
+    | [] -> raise_error "Malformed arrow type"
+    | [x] -> x
+    | x :: xs -> Typ.arrow "" x (arrow xs)
 
   let mk_type kind concrete name =
     match concrete with
@@ -146,6 +152,16 @@ struct
             (Exp.ident (ident "x"))
          )]
 
+  let operator name floatop =
+    Str.value
+      Nonrecursive
+      [ Vb.mk (Pat.var (create_loc name)) (Exp.ident (ident floatop))]
+
+  let operator_sig name =
+    Sig.value (Val.mk (create_loc name) (arrow [
+        poly "t"; poly "t"; poly "t"
+      ]))
+
   let module_sig hash name =
     let li = [
       Sig.type_ [base_type true]
@@ -153,13 +169,23 @@ struct
         (phantom_type
            (type_param "base", type_param "subject") "t")
         (ref_type "float")
+    ; operator_sig "+"
+    ; operator_sig "-"
+    ; operator_sig "*"
+    ; operator_sig "/"
+    ; operator_sig "**"
     ] in
     Mty.signature li
 
   let module_impl hash name mod_type =
     let li = [
       Str.type_ [base_type false]
-      ; identity "to_float"
+    ; identity "to_float"
+    ; operator "+" "+."
+    ; operator "-" "-."
+    ; operator "*" "*."
+    ; operator "/" "/."
+    ; operator "**" "**"
     ] in
     Mod.(constraint_ (structure li) mod_type)
     |> Mb.mk (create_loc name)

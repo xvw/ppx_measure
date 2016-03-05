@@ -11,8 +11,3 @@ and  l  [@@measure fun cl -> cl *. 100.  ]
 and  kl [@@measure fun cl -> cl *. 1000. ]
 
 type ex
-
-module R =
-struct
-  type rl [@@measure]
-end
