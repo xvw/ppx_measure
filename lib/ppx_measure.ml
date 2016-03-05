@@ -24,8 +24,6 @@ open Parsetree
 open Asttypes
 open Ast_helper
 
-let hash = Hashtbl.create 10
-
 
 let create_loc ?(loc = !default_loc) value = {
   txt = value
@@ -47,7 +45,7 @@ let wrap_in name items =
     create_attribute name (PStr items)
   )
 
-let add_metric base_name parent callback =
+let add_metric hash base_name parent callback =
   if Hashtbl.mem hash base_name
   then raise_error (
       Printf.sprintf
@@ -56,7 +54,7 @@ let add_metric base_name parent callback =
     )
   else Hashtbl.add hash base_name (parent, callback)
 
-let perform_subtypes parent =
+let perform_subtypes hash parent =
   let rec aux = function
     | [] -> ()
     | x :: xs ->
@@ -74,7 +72,7 @@ let perform_subtypes parent =
               match exp.pexp_desc with
               | (Pexp_fun (_, _, _, _)) as func ->
                 let _ = printf "add %s as a subtype\n" name in
-                let _ = add_metric name parent (Some func) in
+                let _ = add_metric hash name parent (Some func) in
                 aux xs
               | _ -> raise_error (sprintf "[%s] Malformed subtype" name)
             end
@@ -84,20 +82,20 @@ let perform_subtypes parent =
   in aux
 
 
-let perform_type mapper item = function
+let perform_type hash mapper item = function
   | x :: xs when List.exists
         (fun (e, _) -> e.txt = "measure") x.ptype_attributes ->
     let base_name = x.ptype_name.txt in
     let _ = printf "add %s as a type\n" base_name in
-    let _ = add_metric base_name base_name None in
-    let _ = perform_subtypes base_name xs in
+    let _ = add_metric hash base_name base_name None in
+    let _ = perform_subtypes hash base_name xs in
     (wrap_in "measure-refuted" [item])
   | _ -> Ast_mapper.(default_mapper.structure_item mapper item)
 
 
-let structure_item mapper item =
+let structure_item hash mapper item =
   match item.pstr_desc with
-  | Pstr_type declarations -> perform_type mapper item declarations
+  | Pstr_type declarations -> perform_type hash mapper item declarations
   | _ -> Ast_mapper.(default_mapper.structure_item mapper item)
 
 module Stubs =
@@ -174,13 +172,22 @@ struct
     let f = "to_"^key in
     identity_sig f (ref_type "float") (ref_type key)
 
+  let perform_coersion_sig key parent = function
+    | None -> []
+    | _ ->
+    let f = key^"_of_"^parent in
+    [alias_sig f [ref_type parent; ref_type key]]
+
   let perform_hash_sig hash =
-    Hashtbl.fold (
-      fun key (parent, func) acc ->
-        (Sig.type_ [concrete_type parent key])
-        :: to_something_sig key
-        :: acc
-    ) hash []
+    let a, b, c = Hashtbl.fold (
+      fun key (parent, func) (acc_types, acc_float, acc_coers) ->
+        (
+          Sig.type_ [concrete_type parent key] :: acc_types,
+          to_something_sig key :: acc_float,
+          (perform_coersion_sig key parent func) @ acc_coers
+        )
+    ) hash ([], [], [])
+    in List.concat [a; b; c]
 
 
   let module_sig hash name =
@@ -267,7 +274,7 @@ struct
 end
 
 
-let structure mapper strct =
+let structure hash mapper strct =
   let rec aux = function
     | x :: xs ->
       begin
@@ -281,10 +288,11 @@ let structure mapper strct =
   (Stubs.module_pack hash) :: (aux strct)
 
 let item_mapper =
+  let hash = Hashtbl.create 10 in
   Ast_mapper.{
     default_mapper with
-    structure_item = structure_item;
-    structure = structure;
+    structure_item = structure_item hash;
+    structure = structure hash;
   }
 
 let () =
