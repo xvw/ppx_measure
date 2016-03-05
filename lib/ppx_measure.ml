@@ -178,6 +178,16 @@ struct
     let f = key^"_of_"^parent in
     [alias_sig f [ref_type parent; ref_type key]]
 
+  let perform_coersion key parent = function
+    | Some f ->
+      let fname = key^"_of_"^parent in
+      let v =
+        Str.value
+          Nonrecursive
+          [Vb.mk (Pat.var (create_loc fname)) (Exp.mk f) ]
+      in [v]
+    | _ -> []
+
   let perform_hash_sig hash =
     let a, b, c = Hashtbl.fold (
       fun key (parent, func) (acc_types, acc_float, acc_coers) ->
@@ -226,9 +236,10 @@ struct
     let perform_hash_impl hash =
     Hashtbl.fold (
       fun key (parent, func) acc ->
-        (Str.type_ [concrete_type parent key])
-        :: to_something key
-        :: acc
+        ((Str.type_ [concrete_type parent key])
+         :: to_something key :: [])
+        @ (perform_coersion key parent func)
+        @ acc
     ) hash []
 
 
