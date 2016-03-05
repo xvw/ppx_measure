@@ -106,8 +106,9 @@ struct
   let type_param name = Typ.var name
   let ref_type name = Typ.constr (ident name) []
   let phantom_type (a, b) t = Typ.constr (ident t) [a; b]
-  let poly name = Typ.constr (ident name) [type_param "base"; type_param "subtype"]
-
+  let poly name = phantom_type (type_param "base", type_param "subtype") name
+  let variant name = Typ.variant [Rtag (name, [], true, [])] Closed None
+  let type_of parent subtype = phantom_type (variant parent, variant subtype) "t"
   let rec arrow = function
     | [] -> raise_error "Malformed arrow type"
     | [x] -> x
@@ -132,6 +133,11 @@ struct
           ])
         ~kind:kind
         (create_loc name)
+
+  let concrete_type a b =
+    Type.mk
+      ~manifest:(type_of a b)
+      (create_loc b)
 
    let base_type abstr =
     let t = if abstr then None else Some (ref_type "float") in
@@ -162,20 +168,31 @@ struct
         poly "t"; poly "t"; poly "t"
       ]))
 
+  let perform_hash_sig hash =
+    Hashtbl.fold (
+      fun key (parent, func) acc ->
+        (Sig.type_ [concrete_type parent key]) :: acc
+    ) hash []
+
+
   let module_sig hash name =
     let li = [
       Sig.type_ [base_type true]
-    ; identity_sig "to_float"
-        (phantom_type
-           (type_param "base", type_param "subject") "t")
-        (ref_type "float")
+    ; identity_sig "to_float" (poly "t") (ref_type "float")
     ; operator_sig "+"
     ; operator_sig "-"
     ; operator_sig "*"
     ; operator_sig "/"
     ; operator_sig "**"
-    ] in
-    Mty.signature li
+    ] @ (perform_hash_sig hash)
+    in Mty.signature li
+
+    let perform_hash_impl hash =
+    Hashtbl.fold (
+      fun key (parent, func) acc ->
+        (Str.type_ [concrete_type parent key]) :: acc
+    ) hash []
+
 
   let module_impl hash name mod_type =
     let li = [
@@ -186,10 +203,10 @@ struct
     ; operator "*" "*."
     ; operator "/" "/."
     ; operator "**" "**"
-    ] in
-    Mod.(constraint_ (structure li) mod_type)
-    |> Mb.mk (create_loc name)
-    |> Str.module_
+    ] @ (perform_hash_impl hash)
+    in Mod.(constraint_ (structure li) mod_type)
+       |> Mb.mk (create_loc name)
+       |> Str.module_
 
   let module_pack hash =
     module_sig hash "MEASURE"
