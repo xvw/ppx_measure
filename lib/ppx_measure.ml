@@ -105,6 +105,7 @@ struct
 
   let type_param name = Typ.var name
   let ref_type name = Typ.constr (ident name) []
+  let phantom_type (a, b) t = Typ.constr (ident t) [a; b]
 
   let mk_type kind concrete name =
     match concrete with
@@ -126,26 +127,53 @@ struct
         ~kind:kind
         (create_loc name)
 
-  let base_type abstr =
+   let base_type abstr =
     let t =
       if abstr
       then None
       else Some (ref_type "float")
     in
-    mk_type
-      Ptype_abstract
-      t
-      "t"
+    mk_type Ptype_abstract t "t"
+
+  let identity_sig name input output =
+    Sig.value
+      (Val.mk
+         (create_loc name)
+         (Typ.arrow "" input output)
+      )
+
+  let identity name =
+    Str.value
+      Nonrecursive
+      [
+        Vb.mk
+          (Pat.var (create_loc name))
+          (Exp.fun_
+             ""
+             None
+             (Pat.var (create_loc "x"))
+             (Exp.ident (ident "x"))
+          )
+      ]
 
   let module_sig hash name =
     let li = [
       Sig.type_ [base_type true]
+    ; identity_sig "to_float"
+        (phantom_type (
+            type_param "base",
+            type_param "subject"
+          ) "t") (ref_type "float")
     ] in
     Mty.signature li
 
   let module_impl hash name mod_type =
+    let li = [
+      Str.type_ [base_type false]
+      ; identity "to_float"
+    ] in
     Mod.(constraint_
-           (structure [])
+           (structure li)
            mod_type
         )
     |> Mb.mk (create_loc name)
