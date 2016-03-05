@@ -128,42 +128,31 @@ struct
         (create_loc name)
 
    let base_type abstr =
-    let t =
-      if abstr
-      then None
-      else Some (ref_type "float")
-    in
+    let t = if abstr then None else Some (ref_type "float") in
     mk_type Ptype_abstract t "t"
 
   let identity_sig name input output =
-    Sig.value
-      (Val.mk
-         (create_loc name)
-         (Typ.arrow "" input output)
-      )
+    Sig.value (Val.mk (create_loc name) (Typ.arrow "" input output))
 
   let identity name =
     Str.value
       Nonrecursive
-      [
-        Vb.mk
-          (Pat.var (create_loc name))
-          (Exp.fun_
-             ""
-             None
-             (Pat.var (create_loc "x"))
-             (Exp.ident (ident "x"))
-          )
-      ]
+      [Vb.mk
+         (Pat.var (create_loc name))
+         (Exp.fun_
+            ""
+            None
+            (Pat.var (create_loc "x"))
+            (Exp.ident (ident "x"))
+         )]
 
   let module_sig hash name =
     let li = [
       Sig.type_ [base_type true]
     ; identity_sig "to_float"
-        (phantom_type (
-            type_param "base",
-            type_param "subject"
-          ) "t") (ref_type "float")
+        (phantom_type
+           (type_param "base", type_param "subject") "t")
+        (ref_type "float")
     ] in
     Mty.signature li
 
@@ -172,10 +161,7 @@ struct
       Str.type_ [base_type false]
       ; identity "to_float"
     ] in
-    Mod.(constraint_
-           (structure li)
-           mod_type
-        )
+    Mod.(constraint_ (structure li) mod_type)
     |> Mb.mk (create_loc name)
     |> Str.module_
 
@@ -189,12 +175,15 @@ end
 let structure mapper strct =
   let rec aux = function
     | x :: xs ->
-      Ast_mapper.(mapper.structure_item mapper x)
-      :: aux xs
+      begin
+        let item = Ast_mapper.(mapper.structure_item mapper x) in
+        match item.pstr_desc with
+        | Pstr_attribute (a, _) when a.txt = "measure-refuted" -> aux xs
+        | _ -> item :: aux xs
+      end
     | _ -> []
   in
   (Stubs.module_pack hash) :: (aux strct)
-
 
 let item_mapper =
   Ast_mapper.{
