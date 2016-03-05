@@ -166,11 +166,19 @@ struct
   let alias_sig name typ =
     Sig.value (Val.mk (create_loc name) (arrow typ))
 
+  let to_something key =
+    let f = "to_"^key in
+    identity f
+
+  let to_something_sig key =
+    let f = "to_"^key in
+    identity_sig f (ref_type "float") (ref_type key)
+
   let perform_hash_sig hash =
     Hashtbl.fold (
       fun key (parent, func) acc ->
         (Sig.type_ [concrete_type parent key])
-
+        :: to_something_sig key
         :: acc
     ) hash []
 
@@ -211,7 +219,9 @@ struct
     let perform_hash_impl hash =
     Hashtbl.fold (
       fun key (parent, func) acc ->
-        (Str.type_ [concrete_type parent key]) :: acc
+        (Str.type_ [concrete_type parent key])
+        :: to_something key
+        :: acc
     ) hash []
 
 
