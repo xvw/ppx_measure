@@ -158,20 +158,20 @@ struct
             (Exp.ident (ident "x"))
          )]
 
-  let operator name floatop =
+  let alias name floatop =
     Str.value
       Nonrecursive
       [ Vb.mk (Pat.var (create_loc name)) (Exp.ident (ident floatop))]
 
-  let operator_sig name =
-    Sig.value (Val.mk (create_loc name) (arrow [
-        poly "t"; poly "t"; poly "t"
-      ]))
+  let alias_sig name typ =
+    Sig.value (Val.mk (create_loc name) (arrow typ))
 
   let perform_hash_sig hash =
     Hashtbl.fold (
       fun key (parent, func) acc ->
-        (Sig.type_ [concrete_type parent key]) :: acc
+        (Sig.type_ [concrete_type parent key])
+
+        :: acc
     ) hash []
 
 
@@ -179,11 +179,32 @@ struct
     let li = [
       Sig.type_ [base_type true]
     ; identity_sig "to_float" (poly "t") (ref_type "float")
-    ; operator_sig "+"
-    ; operator_sig "-"
-    ; operator_sig "*"
-    ; operator_sig "/"
-    ; operator_sig "**"
+    ; alias_sig "+"          [poly "t"; poly "t"; poly "t"]
+    ; alias_sig "-"          [poly "t"; poly "t"; poly "t"]
+    ; alias_sig "*"          [poly "t"; poly "t"; poly "t"]
+    ; alias_sig "/"          [poly "t"; poly "t"; poly "t"]
+    ; alias_sig "**"         [poly "t"; poly "t"; poly "t"]
+    ; alias_sig "sqrt"       [poly "t"; poly "t"]
+    ; alias_sig "exp"        [poly "t"; poly "t"]
+    ; alias_sig "log"        [poly "t"; poly "t"]
+    ; alias_sig "log10"      [poly "t"; poly "t"]
+    ; alias_sig "expm1"      [poly "t"; poly "t"]
+    ; alias_sig "cos"        [poly "t"; poly "t"]
+    ; alias_sig "sin"        [poly "t"; poly "t"]
+    ; alias_sig "tan"        [poly "t"; poly "t"]
+    ; alias_sig "acos"       [poly "t"; poly "t"]
+    ; alias_sig "asin"       [poly "t"; poly "t"]
+    ; alias_sig "atan"       [poly "t"; poly "t"]
+    ; alias_sig "atan2"      [poly "t"; poly "t"; poly "t"]
+    ; alias_sig "hypot"      [poly "t"; poly "t"; poly "t"]
+    ; alias_sig "cosh"       [poly "t"; poly "t"]
+    ; alias_sig "sinh"       [poly "t"; poly "t"]
+    ; alias_sig "tanh"       [poly "t"; poly "t"]
+    ; alias_sig "ceil"       [poly "t"; poly "t"]
+    ; alias_sig "floor"      [poly "t"; poly "t"]
+    ; alias_sig "abs_float"  [poly "t"; poly "t"]
+    ; alias_sig "copysign"   [poly "t"; poly "t"; poly "t"]
+    ; alias_sig "mod_float"  [poly "t"; poly "t"; poly "t"]
     ] @ (perform_hash_sig hash)
     in Mty.signature li
 
@@ -198,11 +219,32 @@ struct
     let li = [
       Str.type_ [base_type false]
     ; identity "to_float"
-    ; operator "+" "+."
-    ; operator "-" "-."
-    ; operator "*" "*."
-    ; operator "/" "/."
-    ; operator "**" "**"
+    ; alias "+"           "+."
+    ; alias "-"           "-."
+    ; alias "*"           "*."
+    ; alias "/"           "/."
+    ; alias "**"          "**"
+    ; alias "sqrt"        "sqrt"
+    ; alias "exp"         "exp"
+    ; alias "log"         "log"
+    ; alias "log10"       "log10"
+    ; alias "expm1"       "expm1"
+    ; alias "cos"         "cos"
+    ; alias "sin"         "sin"
+    ; alias "tan"         "tan"
+    ; alias "acos"        "acos"
+    ; alias "asin"        "asin"
+    ; alias "atan"        "atan"
+    ; alias "atan2"       "atan2"
+    ; alias "hypot"       "hypot"
+    ; alias "cosh"        "cosh"
+    ; alias "sinh"        "sinh"
+    ; alias "tanh"        "tanh"
+    ; alias "ceil"        "ceil"
+    ; alias "floor"       "floor"
+    ; alias "copysign"    "copysign"
+    ; alias "abs_float"   "abs_float"
+    ; alias "mod_float"   "mod_float"
     ] @ (perform_hash_impl hash)
     in Mod.(constraint_ (structure li) mod_type)
        |> Mb.mk (create_loc name)
