@@ -122,21 +122,21 @@ struct
 end
 
 
-let structure default mapper strct =
-  let aux strct = Ast_mapper.(default.structure mapper strct) in
-  aux ((Stubs.module_pack hash) :: strct)
+let structure mapper strct =
+  let rec aux = function
+    | x :: xs ->
+      (structure_item mapper x)
+      :: (aux xs)
+    | _ -> []
+  in
+  (Stubs.module_pack hash) :: (aux strct)
 
 
 let item_mapper =
-  let mp =
-    Ast_mapper.{
-      default_mapper with
-      structure_item = structure_item;
-    }
-  in Ast_mapper.{
-      mp with
-      structure = structure mp
-    }
+  Ast_mapper.{
+    default_mapper with
+    structure = structure;
+  }
 
 let () =
   Ast_mapper.run_main (fun argv -> item_mapper)
