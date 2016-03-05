@@ -103,8 +103,44 @@ let structure_item mapper item =
 module Stubs =
 struct
 
+  let type_param name = Typ.var name
+  let ref_type name = Typ.constr (ident name) []
+
+  let mk_type kind concrete name =
+    match concrete with
+    | Some x ->
+      Type.mk
+        ~params:([
+            type_param "base", Invariant;
+            type_param "subtype", Invariant;
+          ])
+        ~kind:kind
+        ~manifest:x
+        (create_loc name)
+    | _ ->
+      Type.mk
+        ~params:([
+            type_param "base", Invariant;
+            type_param "subtype", Invariant;
+          ])
+        ~kind:kind
+        (create_loc name)
+
+  let base_type abstr =
+    let t =
+      if abstr
+      then None
+      else Some (ref_type "float")
+    in
+    mk_type
+      Ptype_abstract
+      t
+      "t"
+
   let module_sig hash name =
-    let li = [] in
+    let li = [
+      Sig.type_ [base_type true]
+    ] in
     Mty.signature li
 
   let module_impl hash name mod_type =
@@ -125,8 +161,8 @@ end
 let structure mapper strct =
   let rec aux = function
     | x :: xs ->
-      (structure_item mapper x)
-      :: (aux xs)
+      Ast_mapper.(mapper.structure_item mapper x)
+      :: aux xs
     | _ -> []
   in
   (Stubs.module_pack hash) :: (aux strct)
@@ -135,6 +171,7 @@ let structure mapper strct =
 let item_mapper =
   Ast_mapper.{
     default_mapper with
+    structure_item = structure_item;
     structure = structure;
   }
 
