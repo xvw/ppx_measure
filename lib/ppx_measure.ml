@@ -26,10 +26,14 @@ open Ast_helper
 
 let hash = Hashtbl.create 10
 
+
 let create_loc ?(loc = !default_loc) value = {
   txt = value
 ; loc = loc
 }
+
+let ident ?(loc = !default_loc) v =
+    create_loc ~loc (Longident.Lident v)
 
 let create_attribute value payload =
   (create_loc value, payload)
@@ -96,44 +100,40 @@ let structure_item mapper item =
   | Pstr_type declarations -> perform_type mapper item declarations
   | _ -> Ast_mapper.(default_mapper.structure_item mapper item)
 
-let purge_measure_data x =
-  match x.pstr_desc with
-  | Pstr_type li ->
-    not (List.exists (
-      fun td -> List.exists (
-          fun (attr,_) -> attr.txt = "measure")
-          td.ptype_attributes
-    ) li)
-  | _ -> true
+module Stubs =
+struct
+
+  let module_sig hash name =
+    let li = [] in
+    Mty.signature li
+
+  let module_impl hash name mod_type =
+    Mod.(constraint_
+           (structure [])
+           mod_type
+        )
+    |> Mb.mk (create_loc name)
+    |> Str.module_
+
+  let module_pack hash =
+    module_sig hash "MEASURE"
+    |> module_impl hash "Measure"
+
+end
+
 
 let structure mapper strct =
-  List.filter purge_measure_data strct
+  let aux strct = Ast_mapper.(default_mapper.structure mapper strct) in
+  aux ((Stubs.module_pack hash) :: strct)
 
 
 let item_mapper =
   Ast_mapper.{
     default_mapper with
     structure_item = structure_item;
-  }
-
-let structure_mapper =
-  Ast_mapper.{
-    item_mapper with
     structure = structure;
   }
 
 let () =
-  Ast_mapper.run_main (fun _a -> item_mapper);
-  Ast_mapper.run_main (fun _a -> structure_mapper)
+  Ast_mapper.run_main (fun argv -> item_mapper)
 
-(* let () = *)
-(*   Ast_mapper.(register *)
-(*     "ppx_measure" *)
-(*     (fun argv -> *)
-(*        let hash = Hashtbl.create 10 in { *)
-(*          default_mapper with *)
-(*          structure_item = structure_item hash; *)
-(*          (\* structure = structure hash *\) *)
-(*        } *)
-(*     ) *)
-(* ) *)
