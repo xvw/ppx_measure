@@ -1,39 +1,8 @@
-# ppx_measure
-
-> Provide a syntactic extension to unit of measure representation using Phantom types.
-
-## Usage
-
-For using this ppx extension, your ml file must begin by `[%%use_measure]`. This extension 
-point will be substitute by a module "Measure" with all of types and combinators (in relation 
-of the units).
-
-### Declaring a type as an unit of measure
-
-Measurement are grouped by `type ... and ... and` structure. 
-```
-type a [@@measure]
-and  b [@@measure coersion_function]
-and  c [@@measure coersion_function]
-etc ...
-```
-
-The coersion_function is a lambda to pass from a to b, or a to c. 
-
-For example, let's define "cm" family : 
-
-```ocaml
-[%%use_measure]
-
-type cm [@@measure]
-and  m  [@@measure fun cm -> cm *. 100.  ]
-and  km [@@measure fun cm -> cm *. 1000. ]
-
-```
-
-This code will generate this code : 
-
-```ocaml
+ocamlc -ppx ../ppx_measure.native -dsource example.ml -o example.byte
+define module
+add cm as a type
+add m as a subtype
+add km as a subtype
 module Measure :
   sig
     type ('base,'subtype) t
@@ -116,6 +85,5 @@ module Measure :
     let m_of_cm cm = cm *. 100.
     type cm = ([ `cm ],[ `cm ]) t
     let to_cm x = x
-  end
-``` 
-
+  end 
+rm -rf *.cm*

@@ -71,7 +71,6 @@ let perform_subtypes hash parent =
             begin
               match exp.pexp_desc with
               | (Pexp_fun (_, _, _, _)) as func ->
-                let _ = printf "add %s as a subtype\n" name in
                 let _ = add_metric hash name parent (Some func) in
                 aux xs
               | _ -> raise_error (sprintf "[%s] Malformed subtype" name)
@@ -86,7 +85,6 @@ let perform_type hash mapper item = function
   | x :: xs when List.exists
         (fun (e, _) -> e.txt = "measure") x.ptype_attributes ->
     let base_name = x.ptype_name.txt in
-    let _ = printf "add %s as a type\n" base_name in
     let _ = add_metric hash base_name base_name None in
     let _ = perform_subtypes hash base_name xs in
     (wrap_in "measure-refuted" [item])
@@ -325,7 +323,6 @@ let structure hash mapper strct =
         let item = Ast_mapper.(mapper.structure_item mapper x) in
         match item.pstr_desc with
         | Pstr_extension ((e, pl), _) when e.txt = "use_measure" ->
-          let _ = print_endline "define module" in
           Stubs.module_pack_with hash pl
           :: aux xs
         | Pstr_attribute (a, _) when a.txt = "measure-refuted" -> aux xs
