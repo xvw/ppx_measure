@@ -278,9 +278,35 @@ struct
        |> Mb.mk (create_loc name)
        |> Str.module_
 
-  let module_pack hash =
-    module_sig hash "MEASURE"
-    |> module_impl hash "Measure"
+  let module_name = ref None
+
+  let module_pack hash name =
+    module_sig hash "PPX_MEASURE_SIG"
+    |> module_impl hash name
+
+  let module_pack_with hash = function
+    | PStr [] -> module_pack hash "Measure"
+    | PStr [str] ->
+      begin
+        match str.pstr_desc with
+        | Pstr_eval ({pexp_desc = Pexp_constant (Const_string (modname, _))}, _) ->
+          let _ = module_name := Some modname in
+          module_pack hash modname
+        | _ -> raise_error "Malformed use_measure"
+      end
+    | _ -> raise_error "Malformed use_measure"
+
+  let perform_coersion name expr =
+    match !module_name with
+    | None -> raise_error "Module not initialized"
+    | Some modname ->
+      begin
+        match expr.pexp_desc with
+        | Pexp_let (flag, vb, value) ->
+          (* TODO *)
+        | _ -> raise_error "This expression is not substituable"
+      end
+
 
 end
 
@@ -291,17 +317,32 @@ let structure hash mapper strct =
       begin
         let item = Ast_mapper.(mapper.structure_item mapper x) in
         match item.pstr_desc with
+        | Pstr_extension ((e, pl), _) when e.txt = "use_measure" ->
+          Stubs.module_pack_with hash pl
+          :: aux xs
         | Pstr_attribute (a, _) when a.txt = "measure-refuted" -> aux xs
         | _ -> item :: aux xs
       end
     | _ -> []
   in
-  (Stubs.module_pack hash) :: (aux strct)
+  aux strct
+
+let expr hash mapper ext =
+  match ext.pexp_desc with
+  | Pexp_extension (e, PStr [str]) when Hashtbl.mem hash e.txt ->
+    begin
+      match str.pstr_desc with
+      | Pstr_eval (e, _) -> e
+      | _ -> raise_error "Malformed value anotation"
+    end
+  | _ -> Ast_mapper.(default_mapper.expr mapper ext)
+
 
 let item_mapper =
   let hash = Hashtbl.create 10 in
   Ast_mapper.{
     default_mapper with
+    expr = expr hash;
     structure_item = structure_item hash;
     structure = structure hash;
   }
