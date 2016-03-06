@@ -1,8 +1,4 @@
 ocamlc -ppx ../ppx_measure.native -dsource example.ml -o example.byte
-define module
-add cm as a type
-add m as a subtype
-add km as a subtype
 module Measure :
   sig
     type ('base,'subtype) t
@@ -39,14 +35,27 @@ module Measure :
       ('base,'subtype) t -> ('base,'subtype) t -> ('base,'subtype) t
     val mod_float :
       ('base,'subtype) t -> ('base,'subtype) t -> ('base,'subtype) t
+    type dollar = ([ `euro ],[ `dollar ]) t
+    type euro = ([ `euro ],[ `euro ]) t
     type km = ([ `cm ],[ `km ]) t
+    type cl = ([ `cl ],[ `cl ]) t
+    type kl = ([ `cl ],[ `kl ]) t
     type m = ([ `cm ],[ `m ]) t
     type cm = ([ `cm ],[ `cm ]) t
+    type l = ([ `cl ],[ `l ]) t
+    val to_dollar : float -> dollar
+    val to_euro : float -> euro
     val to_km : float -> km
+    val to_cl : float -> cl
+    val to_kl : float -> kl
     val to_m : float -> m
     val to_cm : float -> cm
+    val to_l : float -> l
+    val dollar_of_euro : euro -> dollar
     val km_of_cm : cm -> km
+    val kl_of_cl : cl -> kl
     val m_of_cm : cm -> m
+    val l_of_cl : cl -> l
   end =
   struct
     type ('base,'subtype) t = float
@@ -77,13 +86,26 @@ module Measure :
     let copysign = copysign
     let abs_float = abs_float
     let mod_float = mod_float
+    type dollar = ([ `euro ],[ `dollar ]) t
+    let to_dollar x = x
+    let dollar_of_euro euro = euro /. 1.0993
+    type euro = ([ `euro ],[ `euro ]) t
+    let to_euro x = x
     type km = ([ `cm ],[ `km ]) t
     let to_km x = x
     let km_of_cm cm = cm *. 1000.
+    type cl = ([ `cl ],[ `cl ]) t
+    let to_cl x = x
+    type kl = ([ `cl ],[ `kl ]) t
+    let to_kl x = x
+    let kl_of_cl cl = cl *. 1000.
     type m = ([ `cm ],[ `m ]) t
     let to_m x = x
     let m_of_cm cm = cm *. 100.
     type cm = ([ `cm ],[ `cm ]) t
     let to_cm x = x
+    type l = ([ `cl ],[ `l ]) t
+    let to_l x = x
+    let l_of_cl cl = cl *. 100.
   end 
 rm -rf *.cm*
