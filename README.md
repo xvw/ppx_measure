@@ -253,4 +253,40 @@ module Measure :
 
 ```
 
-## Using measure
+## Using measure (some examples)
+
+### Standard usage
+
+```ocaml
+[%%use_measure]
+
+type cm [@@measure]
+and  m  [@@measure fun cm -> cm *. 100.  ]
+and  km [@@measure fun cm -> cm *. 1000. ]
+
+let a = Measure.to_cm 1.0 
+let b = Measure.to_cm 2.0 
+let c = Measure.(a + b)
+
+let d = Measure.to_km 2.0 
+let e = Measure.(a + d) (* This code crash *)
+```
+
+### With extension point
+
+```ocaml
+[%%use_measure]
+
+type cm [@@measure]
+and  m  [@@measure fun cm -> cm *. 100.  ]
+and  km [@@measure fun cm -> cm *. 1000. ]
+
+let%cm a = 1.0 
+let%cm b = 2.0 
+let c = Measure.(a + b)
+
+let%km d = 2.0 
+let e = Measure.(a + d) (* This code crash *)
+```
+
+`let%f a = x` is rewritted to `let a = Measure.to_f x`
