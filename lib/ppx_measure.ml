@@ -93,11 +93,6 @@ let perform_type hash mapper item = function
   | _ -> Ast_mapper.(default_mapper.structure_item mapper item)
 
 
-let structure_item hash mapper item =
-  match item.pstr_desc with
-  | Pstr_type declarations -> perform_type hash mapper item declarations
-  | _ -> Ast_mapper.(default_mapper.structure_item mapper item)
-
 module Stubs =
 struct
 
@@ -297,7 +292,16 @@ struct
       end
     | _ -> raise_error "Malformed use_measure"
 
-  let perform_coersion name base expr =
+  let expr_coersion f v = {
+    v with
+    pvb_expr = Exp.(
+        apply
+          (ident (create_loc f))
+          ["", v.pvb_expr]
+      )
+  }
+
+  let perform_coersion name expr =
     match !module_name with
     | None -> raise_error "The measure module is not initialized"
     | Some modname ->
@@ -306,12 +310,11 @@ struct
         | Pexp_let (flag, vb, value) ->
           let open Longident in
           let f = Ldot (Lident modname, "to_"^name) in
-          let pex = List.map (fun v ->
-              {v with pvb_expr = Exp.(apply (ident (create_loc f)) ["", v.pvb_expr] )}
-            ) vb in Exp.let_ flag pex value
+          let pex = List.map (expr_coersion f) vb in
+          Exp.let_ flag pex value
         | _ -> raise_error "This expression is not substituable"
       end
-      
+
 end
 
 
@@ -332,12 +335,31 @@ let structure hash mapper strct =
   in
   aux strct
 
+let structure_item hash mapper item =
+  match item.pstr_desc with
+  | Pstr_type declarations -> perform_type hash mapper item declarations
+  | Pstr_extension ((e, PStr [str]), _) when Hashtbl.mem hash e.txt->
+    begin
+      match str.pstr_desc with
+      | Pstr_value (rf, vb) ->
+        begin
+          match !Stubs.module_name with
+          | None -> raise_error "The measure module is not initialized"
+          | Some modname ->
+            let open Longident in
+            let f = Ldot (Lident modname, "to_"^e.txt) in
+            Str.value rf (List.map (Stubs.expr_coersion f) vb)
+        end
+      | _ -> Ast_mapper.(default_mapper.structure_item mapper item)
+    end
+  | _ -> Ast_mapper.(default_mapper.structure_item mapper item)
+
 let expr hash mapper ext =
   match ext.pexp_desc with
   | Pexp_extension (e, PStr [str]) when Hashtbl.mem hash e.txt ->
     begin
       match str.pstr_desc with
-      | Pstr_eval (exp, _) -> Stubs.perform_coersion e.txt ext exp
+      | Pstr_eval (exp, _) -> Stubs.perform_coersion e.txt exp
       | _ -> raise_error "Malformed value anotation"
     end
   | _ -> Ast_mapper.(default_mapper.expr mapper ext)
