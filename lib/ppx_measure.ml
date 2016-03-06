@@ -278,14 +278,15 @@ struct
        |> Mb.mk (create_loc name)
        |> Str.module_
 
-  let module_name = ref None
+  let module_name = ref (Some "Measure")
 
   let module_pack hash name =
     module_sig hash "PPX_MEASURE_SIG"
     |> module_impl hash name
 
   let module_pack_with hash = function
-    | PStr [] -> module_pack hash "Measure"
+    | PStr [] ->
+      module_pack hash "Measure"
     | PStr [str] ->
       begin
         match str.pstr_desc with
@@ -296,18 +297,21 @@ struct
       end
     | _ -> raise_error "Malformed use_measure"
 
-  let perform_coersion name expr =
+  let perform_coersion name base expr =
     match !module_name with
-    | None -> raise_error "Module not initialized"
+    | None -> raise_error "The measure module is not initialized"
     | Some modname ->
       begin
         match expr.pexp_desc with
         | Pexp_let (flag, vb, value) ->
-          (* TODO *)
+          let open Longident in
+          let f = Ldot (Lident modname, "to_"^name) in
+          let pex = List.map (fun v ->
+              {v with pvb_expr = Exp.(apply (ident (create_loc f)) ["", v.pvb_expr] )}
+            ) vb in Exp.let_ flag pex value
         | _ -> raise_error "This expression is not substituable"
       end
-
-
+      
 end
 
 
@@ -318,6 +322,7 @@ let structure hash mapper strct =
         let item = Ast_mapper.(mapper.structure_item mapper x) in
         match item.pstr_desc with
         | Pstr_extension ((e, pl), _) when e.txt = "use_measure" ->
+          let _ = print_endline "define module" in
           Stubs.module_pack_with hash pl
           :: aux xs
         | Pstr_attribute (a, _) when a.txt = "measure-refuted" -> aux xs
@@ -332,7 +337,7 @@ let expr hash mapper ext =
   | Pexp_extension (e, PStr [str]) when Hashtbl.mem hash e.txt ->
     begin
       match str.pstr_desc with
-      | Pstr_eval (e, _) -> e
+      | Pstr_eval (exp, _) -> Stubs.perform_coersion e.txt ext exp
       | _ -> raise_error "Malformed value anotation"
     end
   | _ -> Ast_mapper.(default_mapper.expr mapper ext)

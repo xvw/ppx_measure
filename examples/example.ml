@@ -16,6 +16,7 @@ type ex
 
 let test =
   let%cm xvw = 20.0
+  and tetts = 21.0
   in xvw
 let%cm x = 10.0
 let%km y = 12.0
