@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 51a7507c7b2c46dc9ca075b1e55987a7)
+# DO NOT EDIT (digest: 63e70dfb5470a45dbb89c5ea3e23790e)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -14,8 +14,8 @@ true: annot, bin_annot
 ".git": not_hygienic
 "_darcs": -traverse
 "_darcs": not_hygienic
-# Library ppx_bigarray
-"lib/ppx_bigarray.cmxs": use_ppx_bigarray
+# Library ppx_measure
+"lib/ppx_measure.cmxs": use_ppx_measure
 # Executable ppx_measure
 <lib/ppx_measure.{native,byte}>: package(compiler-libs.common)
 <lib/*.ml{,i,y}>: package(compiler-libs.common)

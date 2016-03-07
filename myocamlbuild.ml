@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 88544d05f069315d3c7d5d5204453507) *)
+(* DO NOT EDIT (digest: dbfd26f2e5ffd9defb9252bac31695d2) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -607,7 +607,7 @@ end
 open Ocamlbuild_plugin;;
 let package_default =
   {
-     MyOCamlbuildBase.lib_ocaml = [("ppx_bigarray", ["lib"], [])];
+     MyOCamlbuildBase.lib_ocaml = [("ppx_measure", ["lib"], [])];
      lib_c = [];
      flags = [];
      includes = []

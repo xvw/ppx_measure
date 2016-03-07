@@ -11,7 +11,7 @@ Plugins: META (0.3), DevFiles (0.3)
 FilesAB: lib/META.ab
 OCamlVersion: >= 4.02
 
-Library ppx_bigarray
+Library ppx_measure
   Path:                 lib
   FindlibName:          ppx_measure
   Modules:              Ppx_measure
