@@ -12,3 +12,9 @@ and  kl [@@measure fun cl -> cl *. 1000. ]
 
 type euro   [@@measure]
 and  dollar [@@measure fun euro -> euro /. 1.0993 ] 
+
+let%cm a = 10.0
+let%cm b = 12.0
+
+let () =
+  Printf.printf "%g : result" Measure.((a + b) |> to_float)

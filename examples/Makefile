@@ -1,9 +1,5 @@
-OCAMLC = ocamlc -ppx ../ppx_measure.native
-
-
 example:
-	$(OCAMLC) -dsource example.ml -o example.byte
-	rm -rf *.cm*
+	ocamlfind ocamlc example.ml -package ppx_measure
 
 show:
 	ocamlfind ppx_tools/dumpast example.ml
