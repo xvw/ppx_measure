@@ -1,5 +1,5 @@
 example:
-	ocamlfind ocamlc example.ml -package ppx_measure
+	ocamlfind ocamlc -dsource example.ml -package ppx_measure
 
 show:
 	ocamlfind ppx_tools/dumpast example.ml

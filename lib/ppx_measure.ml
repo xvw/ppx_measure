@@ -199,30 +199,13 @@ struct
     ; identity_sig "to_float" (poly "t") (ref_type "float")
     ; alias_sig "+"          [poly "t"; poly "t"; poly "t"]
     ; alias_sig "-"          [poly "t"; poly "t"; poly "t"]
-    ; alias_sig "*"          [poly "t"; poly "t"; poly "t"]
-    ; alias_sig "/"          [poly "t"; poly "t"; poly "t"]
-    ; alias_sig "**"         [poly "t"; poly "t"; poly "t"]
-    ; alias_sig "sqrt"       [poly "t"; poly "t"]
-    ; alias_sig "exp"        [poly "t"; poly "t"]
-    ; alias_sig "log"        [poly "t"; poly "t"]
-    ; alias_sig "log10"      [poly "t"; poly "t"]
-    ; alias_sig "expm1"      [poly "t"; poly "t"]
-    ; alias_sig "cos"        [poly "t"; poly "t"]
-    ; alias_sig "sin"        [poly "t"; poly "t"]
-    ; alias_sig "tan"        [poly "t"; poly "t"]
-    ; alias_sig "acos"       [poly "t"; poly "t"]
-    ; alias_sig "asin"       [poly "t"; poly "t"]
-    ; alias_sig "atan"       [poly "t"; poly "t"]
-    ; alias_sig "atan2"      [poly "t"; poly "t"; poly "t"]
-    ; alias_sig "hypot"      [poly "t"; poly "t"; poly "t"]
-    ; alias_sig "cosh"       [poly "t"; poly "t"]
-    ; alias_sig "sinh"       [poly "t"; poly "t"]
-    ; alias_sig "tanh"       [poly "t"; poly "t"]
+    ; alias_sig "*"          [poly "t"; ref_type "float"; poly "t"]
+    ; alias_sig "/"          [poly "t"; ref_type "float"; poly "t"]
+    ; alias_sig "**"         [poly "t"; ref_type "float"; poly "t"]
     ; alias_sig "ceil"       [poly "t"; poly "t"]
     ; alias_sig "floor"      [poly "t"; poly "t"]
     ; alias_sig "abs_float"  [poly "t"; poly "t"]
-    ; alias_sig "copysign"   [poly "t"; poly "t"; poly "t"]
-    ; alias_sig "mod_float"  [poly "t"; poly "t"; poly "t"]
+    ; alias_sig "mod_float"  [poly "t"; ref_type "float"; poly "t"]
     ] @ (perform_hash_sig hash)
     in Mty.signature li
 
@@ -245,22 +228,6 @@ struct
     ; alias "*"           "*."
     ; alias "/"           "/."
     ; alias "**"          "**"
-    ; alias "sqrt"        "sqrt"
-    ; alias "exp"         "exp"
-    ; alias "log"         "log"
-    ; alias "log10"       "log10"
-    ; alias "expm1"       "expm1"
-    ; alias "cos"         "cos"
-    ; alias "sin"         "sin"
-    ; alias "tan"         "tan"
-    ; alias "acos"        "acos"
-    ; alias "asin"        "asin"
-    ; alias "atan"        "atan"
-    ; alias "atan2"       "atan2"
-    ; alias "hypot"       "hypot"
-    ; alias "cosh"        "cosh"
-    ; alias "sinh"        "sinh"
-    ; alias "tanh"        "tanh"
     ; alias "ceil"        "ceil"
     ; alias "floor"       "floor"
     ; alias "copysign"    "copysign"
